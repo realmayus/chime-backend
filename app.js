@@ -1,9 +1,16 @@
-const functions = require('firebase-functions');
+const express = require('express')
 const fetch = require("node-fetch");
 const admin = require('firebase-admin');
+
 admin.initializeApp({credential: admin.credential.cert(require("./secret/firebase_creds.json"))});
 
-exports.getProfile =  functions.https.onRequest(async (request, response) => {
+const app = express()
+const port = 3000
+
+app.get('/getProfile', async (request, response) => {
+    response.set('Access-Control-Allow-Origin', "*")
+    response.set('Access-Control-Allow-Methods', 'GET, POST')
+
     const token = request.query.token
     if(token === null || token === undefined) {
         response.send("You have to provide a token!");
@@ -39,7 +46,10 @@ exports.getProfile =  functions.https.onRequest(async (request, response) => {
 });
 
 
-exports.getPlaylist =  functions.https.onRequest(async (request, response) => {
+app.get('/getPlaylist', async (request, response) => {
+    response.set('Access-Control-Allow-Origin', "*")
+    response.set('Access-Control-Allow-Methods', 'GET, POST')
+
     const token = request.query.token
     const playlist = request.query.playlist
 
@@ -67,8 +77,7 @@ exports.getPlaylist =  functions.https.onRequest(async (request, response) => {
         .get()
         .then(doc => {
             if(!doc.exists) {
-                response.send({"errorCode": "not-existing", "error": "The provided playlist ID doesn't point to an existing playlist."})
-                response.sendStatus(404);
+                response.status(404).send({"errorCode": "not-existing", "error": "The provided playlist ID doesn't point to an existing playlist."})
                 return null;
             }
             let data = doc.data();
@@ -76,7 +85,9 @@ exports.getPlaylist =  functions.https.onRequest(async (request, response) => {
             return null;
         })
         .catch(err => {
-            response.send("An error occurred: <code>" + err.text + "</code>")
+            response.status(500).send("An error occurred: <code>" + err.text + "</code>")
             console.log(err)
         })
 });
+
+app.listen(port, () => console.log(`Example app listening at http://localhost:${port}`))
