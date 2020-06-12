@@ -7,9 +7,10 @@
     "cors": "^2.8.5",
     "express": "^4.17.1",
     "firebase-admin": "^8.12.1",
-    "node-fetch": "^2.6.0"
+    "googleapis": "^52.1.0",
+    "node-fetch": "^2.6.0",
+    "@google-cloud/local-auth": "^0.1.0"
   },
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
