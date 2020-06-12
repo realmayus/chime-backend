@@ -1,11 +1,13 @@
 const express = require('express')
 const fetch = require("node-fetch");
 const admin = require('firebase-admin');
+const cors = require('cors');
 
 admin.initializeApp({credential: admin.credential.cert(require("./secret/firebase_creds.json"))});
 
-const app = express()
-const port = 5000
+const app = express();
+app.use(cors());
+const port = 5000;
 
 app.get('/getProfile', async (request, response) => {
     response.set('Access-Control-Allow-Origin', "*")
