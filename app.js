@@ -5,7 +5,7 @@ const admin = require('firebase-admin');
 admin.initializeApp({credential: admin.credential.cert(require("./secret/firebase_creds.json"))});
 
 const app = express()
-const port = 3000
+const port = 5000
 
 app.get('/getProfile', async (request, response) => {
     response.set('Access-Control-Allow-Origin', "*")

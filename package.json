@@ -1,0 +1,25 @@
+{
+  "name": "chime-backend",
+  "version": "1.0.0",
+  "description": "The backend for the chime website.",
+  "main": "app.js",
+  "dependencies": {
+    "express": "^4.17.1",
+    "firebase-admin": "^8.12.1",
+    "node-fetch": "^2.6.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/realmayus/chime-backend.git"
+  },
+  "author": "realmayus",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/realmayus/chime-backend/issues"
+  },
+  "homepage": "https://github.com/realmayus/chime-backend#readme"
+}
