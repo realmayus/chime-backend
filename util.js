@@ -14,8 +14,12 @@ async function check_if_exists(profile, playlist_name) {
         let playlists = data.playlists
         for(let i = 0; i < playlists.length; i++) {
             let playlist = playlists[i];
-            if(playlist.name.toLowerCase() === playlist_name.toLowerCase()) {
-                return true;
+            if(playlist.hasOwnProperty("name")) {
+                if(playlist.name.toLowerCase() === playlist_name.toLowerCase()) {
+                    return true;
+                }
+            } else {
+                return false;
             }
         }
         return false
