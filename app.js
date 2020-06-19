@@ -112,9 +112,6 @@ app.get("/getSearchResults", async(request, response) => {
         response.status(400).send({errorCode: "invalid-query", error: "You have to provide a (valid) query!"});
         return;
     }
-
-
-
     let fetchedInfo = await fetch("https://discord.com/api/users/@me", {
         headers: {
             Authorization: `Bearer ${token}`
@@ -140,9 +137,9 @@ app.get("/getSearchResults", async(request, response) => {
 
     } else {
         response.status(403).send({errorCode: "invalid-token", error: "You have to provide a valid discord API token (to prevent abuse)"});
-        return;
     }
 })
+
 
 app.post('/setPlaylist', async (request, response) => {
     response.set('Access-Control-Allow-Origin', "*")
@@ -168,13 +165,6 @@ app.post('/setPlaylist', async (request, response) => {
     fetchedInfo = await fetchedInfo.json();
     let user_id = fetchedInfo.id;
 
-    let contents = []
-
-    for (i = 0; i < request.body.cards.length; i++) {
-        let card = request.body.cards[i];
-
-    }
-
     let doc = admin.firestore()
         .collection(String(user_id))
         .doc(String(playlist))
@@ -186,9 +176,7 @@ app.post('/setPlaylist', async (request, response) => {
     }
 
     doc.set(
-            {
-                contents: request.body.cards
-            }
+            { contents: request.body.cards }
         )
         .then(res => {
             console.log(res)
@@ -198,7 +186,6 @@ app.post('/setPlaylist', async (request, response) => {
             console.log(err)
             response.status(500).send({status: "ERR", error: err});
         })
-
 });
 
 
@@ -229,26 +216,131 @@ app.get('/createPlaylist', async (request, response) => {
     let profile_doc_ref = admin.firestore()
         .collection(String(user_id))
         .doc("profile")
-
-    let does_exist = await check_if_exists(profile_doc_ref, playlist);
+    profile_doc = await profile_doc_ref.get()
+    let does_exist = await check_if_exists(profile_doc, playlist);
     console.log(playlist)
     if(does_exist) {
         response.status(400).send({errorCode: "already-exists", error: "A playlist with this name already exists"});
         return
     }
-
     let new_id = uuidv4();
 
-    console.log(1)
-    await profile_doc_ref.update({playlists: admin.firestore.FieldValue.arrayUnion({"name": playlist, "ref": new_id})})
+    if(profile_doc.exists) {
+        await profile_doc_ref.update({playlists: admin.firestore.FieldValue.arrayUnion({"name": playlist, "ref": new_id})})
+    } else {
+        await profile_doc_ref.set({playlists: [{"name": playlist, "ref": new_id}]})
+    }
 
-    console.log(2)
     let playlist_doc_ref = admin.firestore().collection(String(user_id)).doc(new_id);
-    console.log(3)
     await playlist_doc_ref.set({contents: []})
     response.status(200).send({status: "OK", id: new_id})
 });
 
+
+app.get('/deletePlaylist', async (request, response) => {
+    response.set('Access-Control-Allow-Origin', "*")
+    response.set('Access-Control-Allow-Methods', 'GET, POST')
+
+    const token = request.query.token
+    const playlist = request.query.playlist
+
+    if(token === null || token === undefined) {
+        response.status(401).send({errorCode: "invalid-token", error: "You have to provide a valid discord API token!"});
+        return;
+    }
+    if(playlist === null || playlist === undefined) {
+        response.status(400).send({errorCode: "invalid-playlist", error: "You have to provide a playlist id!"});
+        return;
+    }
+
+    let fetchedInfo = await fetch("https://discord.com/api/users/@me", {
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    fetchedInfo = await fetchedInfo.json();
+    let user_id = fetchedInfo.id;
+
+    let profile_doc_ref = admin.firestore()
+        .collection(String(user_id))
+        .doc("profile")
+
+    let profile_doc = await profile_doc_ref.get()
+
+    let playlist_doc_ref = admin.firestore()
+        .collection(String(user_id))
+        .doc(String(playlist))
+
+    let playlist_doc = await playlist_doc_ref.get()
+
+    if(!playlist_doc.exists) {
+        response.status(404).send({errorCode: "not-existing", error: "The provided playlist ID doesn't point to an existing playlist."})
+        return
+    }
+
+    await profile_doc_ref.update({playlists: profile_doc.data().playlists.filter(pl => pl.ref !== playlist)})
+    await playlist_doc_ref.delete();
+
+    response.status(200).send({status: "OK"})
+});
+
+app.get('/renamePlaylist', async (request, response) => {
+    response.set('Access-Control-Allow-Origin', "*")
+    response.set('Access-Control-Allow-Methods', 'GET, POST')
+
+    const token = request.query.token
+    const playlist = request.query.playlist
+    const newName = request.query.newName
+
+    if(token === null || token === undefined) {
+        response.status(401).send({errorCode: "invalid-token", error: "You have to provide a valid discord API token!"});
+        return;
+    }
+    if(playlist === null || playlist === undefined) {
+        response.status(400).send({errorCode: "invalid-playlist", error: "You have to provide a playlist id!"});
+        return;
+    }
+    if(newName === null || newName === undefined) {
+        response.status(400).send({errorCode: "invalid-newname", error: "You have to provide a new name!"});
+        return;
+    }
+    let fetchedInfo = await fetch("https://discord.com/api/users/@me", {
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    fetchedInfo = await fetchedInfo.json();
+    let user_id = fetchedInfo.id;
+    let profile_doc_ref = admin.firestore()
+        .collection(String(user_id))
+        .doc("profile")
+
+    let profile_doc = await profile_doc_ref.get()
+
+    let playlist_doc_ref = admin.firestore()
+        .collection(String(user_id))
+        .doc(String(playlist))
+
+    let playlist_doc = await playlist_doc_ref.get()
+
+    if(!playlist_doc.exists) {
+        response.status(404).send({errorCode: "not-existing", error: "The provided playlist ID doesn't point to an existing playlist."})
+        return
+    }
+
+    let playlists = profile_doc.data().playlists;
+    let index = playlists.indexOf(playlists.find(item => item.ref === playlist))
+    if(index === -1) {
+        response.status(404).send({errorCode: "not-existing", error: "The provided playlist ID doesn't point to an existing playlist in the user profile."})
+        return
+    }
+
+    playlists[index] = {name: newName, ref: playlist}  // replacing the playlist in place
+
+    await profile_doc_ref.update({playlists: playlists})
+
+    response.status(200).send({status: "OK"})
+});
 
 
 

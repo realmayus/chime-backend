@@ -6,15 +6,15 @@ function uuidv4() {
 }
 
 async function check_if_exists(profile, playlist_name) {
-    let data_snapshot = await profile.get();
-    let data = data_snapshot.data();
+    let data = profile.data();
+    if(data === undefined) {
+        return false
+    }
     if(data.hasOwnProperty("playlists")) {
-        console.log("1")
         let playlists = data.playlists
         for(let i = 0; i < playlists.length; i++) {
             let playlist = playlists[i];
             if(playlist.name.toLowerCase() === playlist_name.toLowerCase()) {
-                console.log("2")
                 return true;
             }
         }
