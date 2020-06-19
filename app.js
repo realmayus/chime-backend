@@ -335,7 +335,7 @@ app.get('/renamePlaylist', async (request, response) => {
         return
     }
 
-    let does_exist = await check_if_exists(profile_doc, playlist);
+    let does_exist = await check_if_exists(profile_doc, newName);
     console.log(playlist)
     if(does_exist) {
         response.status(400).send({errorCode: "already-exists", error: "A playlist with this name already exists"});
