@@ -5,6 +5,8 @@ const cors = require('cors');
 const util = require("./util");
 const uuidv4 = util.uuidv4;
 const check_if_exists = util.check_if_exists;
+const get_limited_array = util.get_limited_array;
+
 
 admin.initializeApp({credential: admin.credential.cert(require("./secret/firebase_creds.json"))});
 
@@ -13,6 +15,16 @@ app.use(cors());
 app.use(express.json());
 
 const port = 5000;
+const stat_cache_limit = 500;  //limit internat stats cache to the last 1500 datapoints each
+
+
+let statsCache = {
+    common_commands: get_limited_array(stat_cache_limit),
+    non_existant_commands: get_limited_array(stat_cache_limit),
+    users_listening: get_limited_array(stat_cache_limit),
+    servers_listening: get_limited_array(stat_cache_limit),
+    server_amount: get_limited_array(stat_cache_limit)
+}
 
 app.get('/getProfile', async (request, response) => {
     response.set('Access-Control-Allow-Origin', "*")
@@ -51,7 +63,6 @@ app.get('/getProfile', async (request, response) => {
             console.log(err)
         })
 });
-
 
 app.get('/getPlaylist', async (request, response) => {
     response.set('Access-Control-Allow-Origin', "*")
@@ -140,7 +151,6 @@ app.get("/getSearchResults", async(request, response) => {
     }
 })
 
-
 app.post('/setPlaylist', async (request, response) => {
     response.set('Access-Control-Allow-Origin', "*")
     response.set('Access-Control-Allow-Methods', 'GET, POST')
@@ -188,7 +198,6 @@ app.post('/setPlaylist', async (request, response) => {
         })
 });
 
-
 app.get('/createPlaylist', async (request, response) => {
     response.set('Access-Control-Allow-Origin', "*")
     response.set('Access-Control-Allow-Methods', 'GET, POST')
@@ -235,7 +244,6 @@ app.get('/createPlaylist', async (request, response) => {
     await playlist_doc_ref.set({contents: []})
     response.status(200).send({status: "OK", id: new_id})
 });
-
 
 app.get('/deletePlaylist', async (request, response) => {
     response.set('Access-Control-Allow-Origin', "*")
@@ -350,6 +358,61 @@ app.get('/renamePlaylist', async (request, response) => {
     response.status(200).send({status: "OK"})
 });
 
+app.get('/getStats', async (request, response) => {
+    response.set('Access-Control-Allow-Origin', "*")
+    response.set('Access-Control-Allow-Methods', 'GET, POST')
 
+    const limit = request.query.limit
+    if(limit <= 0) {
+        response.status(400).send({errorCode: "invalid-limit", error: "The given limit is an invalid number."})
+    }
+
+    if(limit != null) {
+        console.log("boop")
+        let newObject = {}
+        for (let [key, value] of Object.entries(statsCache)) {
+            newObject[key] = get_limited_array(limit)
+            console.log(value)
+            for(let item of value) {
+                if(typeof item === "object") {
+                    newObject[key].push(item);
+                }
+            }
+            // newObject[key].push()
+        }
+        response.status(200).send(newObject)
+
+    } else {
+        response.status(200).send(statsCache)
+    }
+
+})
+
+function updateStatsCache() {
+    console.log("updated stats cache!")
+    let stats_coll_ref = admin.firestore()
+        .collection("stats")
+
+    for (let [key, value] of Object.entries(statsCache)) {
+        stats_coll_ref.doc(key).get().then( stat_doc => {
+            if(stat_doc != null) {
+                let data = stat_doc.data()
+                if(data != null) {
+                    for(let item of data.data) {
+                        console.log(item)
+                        statsCache[key].push(item)
+                    }
+                }
+
+            }
+        }
+
+        )
+
+    }
+
+}
+updateStatsCache()
+setInterval(updateStatsCache, 1000 * 60 * 5)  //every five minutes
 
 app.listen(port, () => console.log(`Chime backend listening at http://localhost:${port}`))

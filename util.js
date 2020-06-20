@@ -28,8 +28,23 @@ async function check_if_exists(profile, playlist_name) {
     }
 }
 
+function get_limited_array(length) {
+    let array = [];
+
+    array.push = function () {
+        if (this.length >= length) {
+            this.shift();
+        }
+        return Array.prototype.push.apply(this,arguments);
+    }
+
+    return array;
+
+}
+
 
 module.exports = {
     uuidv4: uuidv4,
-    check_if_exists: check_if_exists
+    check_if_exists: check_if_exists,
+    get_limited_array: get_limited_array
 }
