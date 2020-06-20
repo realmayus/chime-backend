@@ -23,7 +23,10 @@ let statsCache = {
     non_existant_commands: get_limited_array(stat_cache_limit),
     users_listening: get_limited_array(stat_cache_limit),
     servers_listening: get_limited_array(stat_cache_limit),
-    server_amount: get_limited_array(stat_cache_limit)
+    server_amount: get_limited_array(stat_cache_limit),
+    latency: get_limited_array(stat_cache_limit),
+    cpu_usage: get_limited_array(stat_cache_limit),
+    ram_usage: get_limited_array(stat_cache_limit),
 }
 
 app.get('/getProfile', async (request, response) => {
@@ -368,17 +371,14 @@ app.get('/getStats', async (request, response) => {
     }
 
     if(limit != null) {
-        console.log("boop")
         let newObject = {}
         for (let [key, value] of Object.entries(statsCache)) {
             newObject[key] = get_limited_array(limit)
-            console.log(value)
             for(let item of value) {
                 if(typeof item === "object") {
                     newObject[key].push(item);
                 }
             }
-            // newObject[key].push()
         }
         response.status(200).send(newObject)
 
@@ -389,7 +389,19 @@ app.get('/getStats', async (request, response) => {
 })
 
 function updateStatsCache() {
-    console.log("updated stats cache!")
+
+    // reset statscache
+    statsCache = {
+        common_commands: get_limited_array(stat_cache_limit),
+        non_existant_commands: get_limited_array(stat_cache_limit),
+        users_listening: get_limited_array(stat_cache_limit),
+        servers_listening: get_limited_array(stat_cache_limit),
+        server_amount: get_limited_array(stat_cache_limit),
+        latency: get_limited_array(stat_cache_limit),
+        cpu_usage: get_limited_array(stat_cache_limit),
+        ram_usage: get_limited_array(stat_cache_limit),
+    }
+
     let stats_coll_ref = admin.firestore()
         .collection("stats")
 
@@ -403,16 +415,12 @@ function updateStatsCache() {
                         statsCache[key].push(item)
                     }
                 }
-
             }
-        }
-
-        )
-
+        })
     }
-
 }
-updateStatsCache()
-setInterval(updateStatsCache, 1000 * 60 * 5)  //every five minutes
+
+updateStatsCache() //run once after start
+setInterval(updateStatsCache, 1000 * 60)  //then every five minutes
 
 app.listen(port, () => console.log(`Chime backend listening at http://localhost:${port}`))
