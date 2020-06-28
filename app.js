@@ -16,6 +16,13 @@ app.use(express.json());
 
 const port = 5000;
 const stat_cache_limit = 500;  //limit internat stats cache to the last 1500 datapoints each
+const LAVALINK_URL = "http://0.0.0.0";
+const LAVALINK_PORT = 2333;
+const LAVALINK_PASSWORD = "youshallnotpass";
+
+let urlregex = /[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)?/gi;
+urlregex = new RegExp(urlregex);
+
 
 
 let statsCache = {
@@ -54,7 +61,7 @@ app.get('/getProfile', async (request, response) => {
         .get()
         .then(doc => {
             if(!doc.exists) {
-                response.send({user_id, playlists: []})
+                response.send({user_id, user_name, avatar_url, data: {user_id, playlists: []}})
                 return null;
             }
             let data = doc.data();
@@ -114,7 +121,6 @@ app.get('/getPlaylist', async (request, response) => {
 app.get("/getSearchResults", async(request, response) => {
     response.set('Access-Control-Allow-Origin', "*")
     response.set('Access-Control-Allow-Methods', 'GET, POST')
-
     const token = request.query.token
     const query = request.query.query
 
@@ -134,23 +140,11 @@ app.get("/getSearchResults", async(request, response) => {
     fetchedInfo = await fetchedInfo.json();
     let user_id = fetchedInfo.id;
     if(user_id) {
-        let results = [];
-        let iterations = 0;
-        do {
-            let fetchedInfo = await fetch("http://youtube-scrape.herokuapp.com/api/search?q=" + encodeURIComponent(query));
-            fetchedInfo = await fetchedInfo.json();
-            results = fetchedInfo.results;
-            iterations++;
-        } while (results.length === 0 && iterations < 5)
-
-        if (results.length > 0) {
-            response.send({results});
-        } else {
-            response.status(404).send({errorCode: "no-results", error: "Couldn't find any results."});
-        }
-
+        let res = await fetch(LAVALINK_URL + ":" + LAVALINK_PORT + "/loadtracks?identifier=" + encodeURIComponent(query.match(urlregex) ? query : "ytsearch:" + query), {headers: {Authorization: LAVALINK_PASSWORD}})
+        res = await res.json();
+        response.send(res);
     } else {
-        response.status(403).send({errorCode: "invalid-token", error: "You have to provide a valid discord API token (to prevent abuse)"});
+        response.status(403).send({errorCode: "unauthorized", error: "unauthorized"})
     }
 })
 
@@ -411,7 +405,6 @@ function updateStatsCache() {
                 let data = stat_doc.data()
                 if(data != null) {
                     for(let item of data.data) {
-                        console.log(item)
                         statsCache[key].push(item)
                     }
                 }
