@@ -140,8 +140,17 @@ app.get("/getSearchResults", async(request, response) => {
     fetchedInfo = await fetchedInfo.json();
     let user_id = fetchedInfo.id;
     if(user_id) {
-        let res = await fetch(LAVALINK_URL + ":" + LAVALINK_PORT + "/loadtracks?identifier=" + encodeURIComponent(query.match(urlregex) ? query : "ytsearch:" + query), {headers: {Authorization: LAVALINK_PASSWORD}})
-        res = await res.json();
+        let i = 0;
+        let has_results = false
+        let res = undefined
+        do {
+            res = await fetch(LAVALINK_URL + ":" + LAVALINK_PORT + "/loadtracks?identifier=" + encodeURIComponent(query.match(urlregex) ? query : "ytsearch:" + query), {headers: {Authorization: LAVALINK_PASSWORD}})
+            res = await res.json();
+            if(res.loadType !== "NO_MATCHES") {
+                has_results = true;
+            }
+            i++;
+        } while (has_results === false && i < 5)
         response.send(res);
     } else {
         response.status(403).send({errorCode: "unauthorized", error: "unauthorized"})
