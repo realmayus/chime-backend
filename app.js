@@ -103,7 +103,7 @@ app.get('/getPlaylist', async (request, response) => {
         user_id = fetchedInfo.id;
 
     } else {
-        const decodedShareCode = Buffer.from(shareCode, 'base64').toString();
+        const decodedShareCode = decodeURIComponent(escape(Buffer.from(shareCode, 'base64').toString()));
         if(decodedShareCode.indexOf(':') !== -1 && decodedShareCode.split(":").length >= 2) {
             initialUserID = decodedShareCode.split(":")[0]
 
@@ -289,7 +289,7 @@ app.get('/clonePlaylist', async (request, response) => {
             return;
         }
     } else {
-        const decodedShareCode = Buffer.from(shareCode, 'base64').toString()
+        const decodedShareCode = decodeURIComponent(escape(Buffer.from(shareCode, 'base64').toString()));
         if(decodedShareCode.indexOf(':') !== -1 && decodedShareCode.split(":").length >= 2) {
             initalUserID = decodedShareCode.split(":")[0]
             initialPlaylistID = decodedShareCode.split(":")[1]
