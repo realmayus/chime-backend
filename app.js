@@ -79,29 +79,46 @@ app.get('/getPlaylist', async (request, response) => {
     response.set('Access-Control-Allow-Methods', 'GET, POST')
 
     const token = request.query.token
+    let user_id;
     const playlist = request.query.playlist
-
-
-    if(token === null || token === undefined) {
-        response.status(401).send({errorCode: "invalid-token", error: "You have to provide a valid discord API token!"});
-        return;
-    }
-    if(playlist === null || playlist === undefined) {
-        response.status(400).send({errorCode: "invalid-playlist", error: "You have to provide a playlist ID!"});
-        return;
-    }
-
-    let fetchedInfo = await fetch("https://discord.com/api/users/@me", {
-        headers: {
-            Authorization: `Bearer ${token}`
+    const shareCode = request.query.sharecode
+    let initialUserID;
+    let initialPlaylistID
+    if(shareCode == null) {
+        if(token == null) {
+            response.status(401).send({errorCode: "invalid-token", error: "You have to provide a valid discord API token!"});
+            return;
         }
-    });
-    fetchedInfo = await fetchedInfo.json();
-    let user_id = fetchedInfo.id;
+        if(playlist == null) {
+            response.status(400).send({errorCode: "invalid-playlist", error: "You have to provide a playlist ID!"});
+            return;
+        }
+
+        let fetchedInfo = await fetch("https://discord.com/api/users/@me", {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+        fetchedInfo = await fetchedInfo.json();
+        user_id = fetchedInfo.id;
+
+    } else {
+        const decodedShareCode = Buffer.from(shareCode, 'base64').toString();
+        if(decodedShareCode.indexOf(':') !== -1 && decodedShareCode.split(":").length >= 2) {
+            initialUserID = decodedShareCode.split(":")[0]
+
+            initialPlaylistID = decodedShareCode.split(":")[1]
+        } else {
+            response.status(400).send({errorCode: "invalid-sharecode", error: "You have to provide a valid sharecode!"});
+            return;
+        }
+    }
+
+
 
     admin.firestore()
-        .collection(String(user_id))
-        .doc(String(playlist))
+        .collection(String(user_id || initialUserID))
+        .doc(String(playlist || initialPlaylistID))
         .get()
         .then(doc => {
             if(!doc.exists) {
@@ -195,7 +212,6 @@ app.post('/setPlaylist', async (request, response) => {
             { contents: request.body.cards }
         )
         .then(res => {
-            console.log(res)
             console.log("success!")
             response.status(200).send({status: "OK"});
         }).catch(err => {
@@ -233,7 +249,6 @@ app.get('/createPlaylist', async (request, response) => {
         .doc("profile")
     profile_doc = await profile_doc_ref.get()
     let does_exist = await check_if_exists(profile_doc, playlist);
-    console.log(playlist)
     if(does_exist) {
         response.status(400).send({errorCode: "already-exists", error: "A playlist with this name already exists"});
         return
@@ -250,6 +265,99 @@ app.get('/createPlaylist', async (request, response) => {
     await playlist_doc_ref.set({contents: []})
     response.status(200).send({status: "OK", id: new_id})
 });
+
+
+app.get('/clonePlaylist', async (request, response) => {
+    response.set('Access-Control-Allow-Origin', "*")
+    response.set('Access-Control-Allow-Methods', 'GET, POST')
+
+    const token = request.query.token
+    const playlist = request.query.playlist
+    const newName = request.query.newName
+    const shareCode = request.query.sharecode
+    let initalUserID = null
+    let initialPlaylistID = null
+
+
+    if (shareCode == null) {
+        if(token == null) {
+            response.status(401).send({errorCode: "invalid-token", error: "You have to provide a valid discord API token!"});
+            return;
+        }
+        if(playlist == null) {
+            response.status(400).send({errorCode: "invalid-playlist", error: "You have to provide a playlist id!"});
+            return;
+        }
+    } else {
+        const decodedShareCode = Buffer.from(shareCode, 'base64').toString()
+        if(decodedShareCode.indexOf(':') !== -1 && decodedShareCode.split(":").length >= 2) {
+            initalUserID = decodedShareCode.split(":")[0]
+            initialPlaylistID = decodedShareCode.split(":")[1]
+        } else {
+            response.status(400).send({errorCode: "invalid-sharecode", error: "You have to provide a valid sharecode!"});
+            return;
+        }
+    }
+    if(newName == null) {
+        response.status(400).send({errorCode: "invalid-name", error: "You have to provide a newName!"});
+        return;
+    }
+    let fetchedInfo = await fetch("https://discord.com/api/users/@me", {
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    fetchedInfo = await fetchedInfo.json();
+    let user_id = fetchedInfo.id;
+    if (user_id != null) {
+        // CREATE NEW PLAYLIST
+        let profile_doc_ref = admin.firestore()
+            .collection(String(user_id))
+            .doc("profile")
+        profile_doc = await profile_doc_ref.get()
+        let does_exist = await check_if_exists(profile_doc, newName);
+
+        if(does_exist) {
+            response.status(400).send({errorCode: "already-exists", error: "A playlist with this name already exists"});
+            return
+        }
+        let new_id = uuidv4();
+
+        if(profile_doc.exists) {
+            await profile_doc_ref.update({playlists: admin.firestore.FieldValue.arrayUnion({"name": newName, "ref": new_id})})
+        } else {
+            await profile_doc_ref.set({playlists: [{"name": newName, "ref": new_id}]})
+        }
+
+        let new_playlist_doc_ref = admin.firestore().collection(String(user_id)).doc(new_id);
+        await new_playlist_doc_ref.set({contents: []})
+
+        let playlist_doc_ref;
+        //GET OLD PLAYLIST
+        let data = null;
+        if(initalUserID == null) {
+            playlist_doc_ref = admin.firestore()
+                .collection(String(user_id))
+                .doc(String(playlist))
+            let playlist_doc = await playlist_doc_ref.get()
+            data = playlist_doc.data();
+        } else {
+            playlist_doc_ref = admin.firestore()
+                .collection(String(initalUserID))
+                .doc(String(initialPlaylistID))
+            let playlist_doc = await playlist_doc_ref.get()
+            data = playlist_doc.data();
+        }
+
+        //SET NEW PLAYLIST
+        await new_playlist_doc_ref.set(data);
+        response.status(200).send({status: "OK", id: new_id})
+
+    } else {
+        response.status(403).send({errorCode: "unauthorized", error: "unauthorized"})
+    }
+})
+
 
 app.get('/deletePlaylist', async (request, response) => {
     response.set('Access-Control-Allow-Origin', "*")
@@ -274,28 +382,32 @@ app.get('/deletePlaylist', async (request, response) => {
     });
     fetchedInfo = await fetchedInfo.json();
     let user_id = fetchedInfo.id;
+    if (user_id != null) {
+        let profile_doc_ref = admin.firestore()
+            .collection(String(user_id))
+            .doc("profile")
 
-    let profile_doc_ref = admin.firestore()
-        .collection(String(user_id))
-        .doc("profile")
+        let profile_doc = await profile_doc_ref.get()
 
-    let profile_doc = await profile_doc_ref.get()
+        let playlist_doc_ref = admin.firestore()
+            .collection(String(user_id))
+            .doc(String(playlist))
 
-    let playlist_doc_ref = admin.firestore()
-        .collection(String(user_id))
-        .doc(String(playlist))
+        let playlist_doc = await playlist_doc_ref.get()
 
-    let playlist_doc = await playlist_doc_ref.get()
+        if(!playlist_doc.exists) {
+            response.status(404).send({errorCode: "not-existing", error: "The provided playlist ID doesn't point to an existing playlist."})
+            return
+        }
 
-    if(!playlist_doc.exists) {
-        response.status(404).send({errorCode: "not-existing", error: "The provided playlist ID doesn't point to an existing playlist."})
-        return
+        await profile_doc_ref.update({playlists: profile_doc.data().playlists.filter(pl => pl.ref !== playlist)})
+        await playlist_doc_ref.delete();
+
+        response.status(200).send({status: "OK"})
+    } else {
+        response.status(403).send({errorCode: "unauthorized", error: "unauthorized"})
     }
 
-    await profile_doc_ref.update({playlists: profile_doc.data().playlists.filter(pl => pl.ref !== playlist)})
-    await playlist_doc_ref.delete();
-
-    response.status(200).send({status: "OK"})
 });
 
 app.get('/renamePlaylist', async (request, response) => {
@@ -350,7 +462,6 @@ app.get('/renamePlaylist', async (request, response) => {
     }
 
     let does_exist = await check_if_exists(profile_doc, newName);
-    console.log(playlist)
     if(does_exist) {
         response.status(400).send({errorCode: "already-exists", error: "A playlist with this name already exists"});
         return
