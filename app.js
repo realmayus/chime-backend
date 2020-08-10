@@ -50,6 +50,11 @@ app.get('/getProfile', async (request, response) => {
             Authorization: `Bearer ${token}`
         }
     });
+    if (fetchedInfo.status !== 200) {
+        let json = await fetchedInfo.json();
+        response.status(fetchedInfo.status).send({errorCode: "discordError", error: json.message});
+        return;
+    }
     fetchedInfo = await fetchedInfo.json();
     let user_id = fetchedInfo.id;
     let user_name = fetchedInfo.username;
@@ -99,6 +104,11 @@ app.get('/getPlaylist', async (request, response) => {
                 Authorization: `Bearer ${token}`
             }
         });
+        if (fetchedInfo.status !== 200) {
+            let json = await fetchedInfo.json();
+            response.status(fetchedInfo.status).send({errorCode: "discordError", error: json.message});
+            return;
+        }
         fetchedInfo = await fetchedInfo.json();
         user_id = fetchedInfo.id;
 
@@ -154,6 +164,11 @@ app.get("/getSearchResults", async(request, response) => {
             Authorization: `Bearer ${token}`
         }
     });
+    if (fetchedInfo.status !== 200) {
+        let json = await fetchedInfo.json();
+        response.status(fetchedInfo.status).send({errorCode: "discordError", error: json.message});
+        return;
+    }
     fetchedInfo = await fetchedInfo.json();
     let user_id = fetchedInfo.id;
     if(user_id) {
@@ -195,6 +210,11 @@ app.post('/setPlaylist', async (request, response) => {
             Authorization: `Bearer ${token}`
         }
     });
+    if (fetchedInfo.status !== 200) {
+        let json = await fetchedInfo.json();
+        response.status(fetchedInfo.status).send({errorCode: "discordError", error: json.message});
+        return;
+    }
     fetchedInfo = await fetchedInfo.json();
     let user_id = fetchedInfo.id;
 
@@ -241,6 +261,11 @@ app.get('/createPlaylist', async (request, response) => {
             Authorization: `Bearer ${token}`
         }
     });
+    if (fetchedInfo.status !== 200) {
+        let json = await fetchedInfo.json();
+        response.status(fetchedInfo.status).send({errorCode: "discordError", error: json.message});
+        return;
+    }
     fetchedInfo = await fetchedInfo.json();
     let user_id = fetchedInfo.id;
 
@@ -307,6 +332,11 @@ app.get('/clonePlaylist', async (request, response) => {
             Authorization: `Bearer ${token}`
         }
     });
+    if (fetchedInfo.status !== 200) {
+        let json = await fetchedInfo.json();
+        response.status(fetchedInfo.status).send({errorCode: "discordError", error: json.message});
+        return;
+    }
     fetchedInfo = await fetchedInfo.json();
     let user_id = fetchedInfo.id;
     if (user_id != null) {
@@ -380,6 +410,11 @@ app.get('/deletePlaylist', async (request, response) => {
             Authorization: `Bearer ${token}`
         }
     });
+    if (fetchedInfo.status !== 200) {
+        let json = await fetchedInfo.json();
+        response.status(fetchedInfo.status).send({errorCode: "discordError", error: json.message});
+        return;
+    }
     fetchedInfo = await fetchedInfo.json();
     let user_id = fetchedInfo.id;
     if (user_id != null) {
@@ -435,6 +470,11 @@ app.get('/renamePlaylist', async (request, response) => {
             Authorization: `Bearer ${token}`
         }
     });
+    if (fetchedInfo.status !== 200) {
+        let json = await fetchedInfo.json();
+        response.status(fetchedInfo.status).send({errorCode: "discordError", error: json.message});
+        return;
+    }
     fetchedInfo = await fetchedInfo.json();
     let user_id = fetchedInfo.id;
     let profile_doc_ref = admin.firestore()
